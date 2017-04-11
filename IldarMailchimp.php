@@ -24,7 +24,7 @@ class IldarMailchimp
 	protected $url = 'https://<dc>.api.mailchimp.com/3.0/';
 	
 	/**
-	 * IldarMailchimp constructor.
+	 * AppjobsMailchimp constructor.
 	 *
 	 * @param $key
 	 * @param $dc
@@ -106,19 +106,23 @@ class IldarMailchimp
 		return $this->request('lists', 'get');
 	}
 	
+	
 	/**
 	 * Добаление подписчика
 	 *
 	 * @param string $list
 	 * @param string $email
-	 * @param string $name
+	 * @param string $fname
+	 * @param string $lname
+	 *
+	 * @return string
 	 */
-	public function addSubscriber($list = '', $email = '', $name = '')
+	public function addSubscriber($list = '', $email = '', $fname = '', $lname = '')
 	{
 		$data = array(
 			'email_address' => $email,
 			'status'        => 'pending',
-			'merge_fields'  => array('FNAME' => $name, 'LNAME' => '')
+			'merge_fields'  => array('FNAME' => $fname, 'LNAME' => $lname)
 		);
 		
 		$res = $this->request('lists/' . $list . '/members', 'post', $data);
@@ -160,10 +164,11 @@ class IldarMailchimp
 	 * @param string $subj
 	 * @param string $from_name
 	 * @param string $reply_to
+	 * @param int    $segment_id
 	 *
 	 * @return mixed
 	 */
-	public function createCamping($list_id = '', $subj, $from_name, $reply_to)
+	public function createCamping($list_id = '', $subj, $from_name, $reply_to, $segment_id = 0)
 	{
 		$data = array(
 			'type'       => 'regular',
@@ -174,6 +179,13 @@ class IldarMailchimp
 				'from_name'    => $from_name
 			)
 		);
+		
+		if ($segment_id !== 0) {
+			$data['recipients'] = array(
+				'list_id'      => $list_id,
+				'segment_opts' => array('saved_segment_id' => $segment_id)
+			);
+		}
 		
 		$res = $this->request('campaigns', 'post', $data);
 		
@@ -236,6 +248,46 @@ class IldarMailchimp
 	public function getTemplates()
 	{
 		$res = $this->request('templates/', 'get');
+		
+		return $res;
+	}
+	
+	
+	/**
+	 * Создание сегмента
+	 *
+	 * @param string $name
+	 * @param string $list_id
+	 * @param array  $cond
+	 *
+	 * @return mixed
+	 */
+	public function createSegment($name = '', $list_id = '', $cond = array())
+	{
+		$data = array('name' => $name, 'options' => $cond);
+		
+		$res = $this->request('lists/' . $list_id . '/segments', 'post', $data);
+		
+		return $res;
+	}
+	
+	
+	/**
+	 * Получить все сегменты в листе
+	 *
+	 * @param string $list_id
+	 *
+	 * @return array
+	 */
+	public function getListSegments($list_id = '')
+	{
+		$segments = $this->request('lists/' . $list_id . '/segments', 'get');
+		
+		$res = array();
+		
+		foreach ($segments->segments as $segment_itm) {
+			$res[$segment_itm->id] = $segment_itm->name;
+		}
 		
 		return $res;
 	}
